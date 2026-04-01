@@ -45,6 +45,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
   const [cityFilter, setCityFilter] = useState("All");
   const [platformFilter, setPlatformFilter] = useState<"all" | "reddit" | "twitter" | "hackernews">("all");
   const [topicFilter, setTopicFilter] = useState<"all" | "general" | "security" | "pandemic">("all");
+  const twitterComingSoon = platformFilter === "twitter";
 
   const sourceOf = (p: MoodPost): string => (p.source || (p.subreddit === "twitter" ? "twitter" : "reddit")).toLowerCase();
 
@@ -151,6 +152,11 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
             style={{ color: "#555", letterSpacing: "0.1em" }}
           >
             LOADING...
+          </span>
+        )}
+        {!loading && twitterComingSoon && (
+          <span className="text-xs" style={{ color: "#3a3a3a", letterSpacing: "0.1em" }}>
+            COMING SOON
           </span>
         )}
         {!loading && filteredPosts.length > 0 && (
@@ -266,7 +272,36 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "thin" }}
       >
-        {loading && posts.length === 0 ? (
+        {twitterComingSoon && !loading && (
+          <div className="h-full flex items-center justify-center p-4">
+            <div
+              className="w-full text-center px-5 py-6"
+              style={{
+                border: "1px solid #1f2a33",
+                background: "linear-gradient(180deg, #0e1419 0%, #0a0a0a 100%)",
+              }}
+            >
+              <div
+                className="text-xs uppercase"
+                style={{ color: "#1d9bf0", letterSpacing: "0.14em", marginBottom: "10px" }}
+              >
+                Twitter/X Feed
+              </div>
+              <div
+                className="text-sm"
+                style={{ color: "#d8d8d8", letterSpacing: "0.03em", marginBottom: "6px" }}
+              >
+                Coming Soon
+              </div>
+              <div className="text-xs" style={{ color: "#777", lineHeight: 1.7 }}>
+                Reliable hosted X/Twitter ingestion is being stabilized.
+                <br />
+                Please use `All Platforms`, `Reddit`, or `HackerNews` for now.
+              </div>
+            </div>
+          </div>
+        )}
+        {!twitterComingSoon && (loading && posts.length === 0 ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="space-y-2 animate-pulse">
@@ -364,7 +399,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
               </button>
             );
           })
-        )}
+        ))}
       </div>
     </aside>
   );
