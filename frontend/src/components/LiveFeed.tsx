@@ -154,7 +154,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
             LOADING...
           </span>
         )}
-        {!loading && twitterComingSoon && (
+        {twitterComingSoon && (
           <span className="text-xs" style={{ color: "#3a3a3a", letterSpacing: "0.1em" }}>
             COMING SOON
           </span>
@@ -272,7 +272,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
         className="flex-1 overflow-y-auto"
         style={{ scrollbarWidth: "thin" }}
       >
-        {twitterComingSoon && !loading && (
+        {twitterComingSoon && (
           <div className="h-full flex items-center justify-center p-4">
             <div
               className="w-full text-center px-5 py-6"
