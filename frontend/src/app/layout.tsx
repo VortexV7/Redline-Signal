@@ -61,7 +61,7 @@ export const metadata: Metadata = {
       "Live global sentiment and risk map from Reddit, HackerNews, and public X/Twitter signals.",
     images: [
       {
-        url: "/og-image.svg",
+        url: "/og-image.svg?v=2",
         width: 1200,
         height: 630,
         alt: "Redline Signal dashboard preview",
@@ -73,12 +73,15 @@ export const metadata: Metadata = {
     title: "Redline Signal",
     description:
       "Live global sentiment and risk map from Reddit, HackerNews, and public X/Twitter signals.",
-    images: ["/og-image.svg"],
+    images: ["/og-image.svg?v=2"],
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
+      { url: "/icon.svg?v=2", type: "image/svg+xml" },
+    ],
+    shortcut: ["/favicon.svg?v=2"],
+    apple: ["/apple-icon.svg?v=2"],
   },
   robots: {
     index: true,
