@@ -52,6 +52,7 @@ _diag: Dict[str, Any] = {
     "source_counts_raw": {},
     "source_counts_blended": {},
     "twitter": {},
+    "googlenews": {},
 }
 
 
@@ -642,6 +643,114 @@ async def fetch_twitter_public(
     return results
 
 
+async def fetch_google_news_rss(
+    client: httpx.AsyncClient,
+    limit_per_query: int = 8,
+) -> List[Dict[str, Any]]:
+    """
+    Public Google News RSS fallback.
+    No credentials required. Useful when Reddit/X are blocked on hosted environments.
+    """
+    searches = [
+        ("india breaking news", "india"),
+        ("india security alert", "india"),
+        ("india pandemic update", "india"),
+        ("world breaking news", "global"),
+        ("global security alert", "global"),
+        ("global pandemic update", "global"),
+        ("pakistan security news", "global"),
+        ("afghanistan security news", "global"),
+    ]
+
+    results: List[Dict[str, Any]] = []
+    seen_links = set()
+    attempts = 0
+    success_http = 0
+    parse_success = 0
+
+    for query, region_hint in searches:
+        attempts += 1
+        url = f"https://news.google.com/rss/search?q={quote_plus(query)}&hl=en-IN&gl=IN&ceid=IN:en"
+        try:
+            resp = await client.get(
+                url,
+                timeout=12,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (compatible; InternetMoodMap/2.0; "
+                        "google-news-rss-fallback)"
+                    ),
+                    "Accept": "application/rss+xml, application/xml, text/xml",
+                },
+                follow_redirects=True,
+            )
+            if resp.status_code != 200:
+                continue
+            success_http += 1
+
+            root = ET.fromstring(resp.text)
+            items = root.findall("./channel/item")
+            if not items:
+                continue
+            parse_success += 1
+
+            for item in items[:limit_per_query]:
+                title = (item.findtext("title") or "").strip()
+                link = (item.findtext("link") or "").strip()
+                if not title or not link or link in seen_links:
+                    continue
+                seen_links.add(link)
+
+                # Google News often appends " - Publisher" at the end.
+                text = title.rsplit(" - ", 1)[0].strip() or title
+                sa = analyse(text)
+                loc_key = "indianews" if region_hint == "india" else "worldnews"
+                loc = get_location(loc_key)
+                is_india = (region_hint == "india") or twitter_region_hint(text)
+                security = is_security_story(text)
+                pandemic = is_pandemic_story(text)
+
+                item_id = hashlib.sha1(link.encode("utf-8")).hexdigest()[:12]
+                results.append({
+                    "id":        f"gn-{item_id}",
+                    "text":      text[:220],
+                    "subreddit": "googlenews",
+                    "source":    "googlenews",
+                    "sentiment": sa["sentiment"],
+                    "score":     sa["score"],
+                    "upvotes":   0,
+                    "lat":       loc["lat"],
+                    "lng":       loc["lng"],
+                    "country":   loc["country"],
+                    "state":     loc["state"],
+                    "city":      loc["city"],
+                    "region":    "india" if is_india else "global",
+                    "security":  security,
+                    "pandemic":  pandemic,
+                    "priority":  importance_score(text, 0, is_india),
+                    "url":       link,
+                })
+        except Exception:
+            continue
+
+    _diag["googlenews"] = {
+        "attempts": attempts,
+        "http_ok": success_http,
+        "parse_ok": parse_success,
+        "items": len(results),
+        "queries": [q for q, _ in searches],
+    }
+    if len(results) == 0:
+        print(
+            "[WARN] Google News RSS returned 0 items. "
+            f"attempts={attempts}, http_ok={success_http}, parse_ok={parse_success}"
+        )
+    else:
+        print(f"[INFO] Google News RSS items fetched: {len(results)}")
+
+    return results
+
+
 # ─── Aggregate all sources ────────────────────────────────────────────────────
 def _sort_posts(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(
@@ -724,6 +833,7 @@ async def build_data() -> List[Dict[str, Any]]:
         tasks.extend([fetch_reddit(client, sub, limit=10) for sub in india_subreddits])
         tasks.append(fetch_hackernews(client, limit=15))
         tasks.append(fetch_twitter_public(client, limit_per_query=10))
+        tasks.append(fetch_google_news_rss(client, limit_per_query=8))
         batches = await asyncio.gather(*tasks)
 
     posts = [p for batch in batches for p in batch]
@@ -753,7 +863,12 @@ def root():
         "status":  "ok",
         "version": "2.0.0",
         "message": "Internet Mood Map API — no credentials required",
-        "sources": ["reddit-public-json", "hackernews-firebase", "twitter-rss-optional"],
+        "sources": [
+            "reddit-public-json",
+            "hackernews-firebase",
+            "twitter-rss-optional",
+            "google-news-rss-fallback",
+        ],
     }
 
 
