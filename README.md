@@ -1,68 +1,86 @@
 # Redline Signal
 
-Redline Signal is a real-time sentiment and risk intelligence dashboard that visualizes public internet signals on a live map and feed.
+> Real-time sentiment and risk intelligence dashboard — visualizing public internet signals on a live map and feed.
 
-> Source-available for viewing only. Reuse, modification, redistribution, or derivative works are not permitted without written permission.
+![Stack](https://img.shields.io/badge/Frontend-Next.js%2014-black?logo=next.js)
+![Stack](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)
+![Stack](https://img.shields.io/badge/Sentiment-VADER-blueviolet)
+![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red)
 
-## Project Snapshot
+---
 
-- Monitoring-style UI: map + live feed + filters
-- Sentiment scoring via VADER (`positive`, `neutral`, `negative`)
-- Risk tags for `security` and `pandemic`
-- India-priority blending with global coverage
-- Multi-source ingestion with hosted-environment fallbacks
+## Overview
 
-## Current Data Sources
+**Redline Signal** is a monitoring-style intelligence dashboard that aggregates and scores public internet content in real time. It blends posts from Reddit, HackerNews, Google News, and optional X/Twitter RSS feeds — enriching each post with sentiment scores, geolocation metadata, and risk tags — then surfaces them on an interactive map and live feed.
 
-| Source | Method | Status |
-|---|---|---|
-| Reddit | Public JSON + RSS fallback | Can be blocked (403) on some hosts |
-| HackerNews | Firebase REST API | Stable primary fallback |
-| X/Twitter | Public RSS via Nitter instances | Optional/intermittent |
-| Google News | Public RSS (India-first + global backup) | Added as resilient hosted fallback |
+**India-priority blending** ensures regional relevance while maintaining global coverage.
+
+---
 
 ## Features
 
-- Live blended feed ranked by priority (importance + risk + regional weighting)
-- Map markers colored by source
-- Feed filters:
-  - Platform (`All`, `Reddit`, `Twitter/X`, `HackerNews`, `Google News`)
-  - Country, state, city
-  - Topic (`All`, `General`, `Security`, `Pandemic`)
-- Twitter/X "Coming Soon" UX state when feed availability is unstable
+- 🗺️ **Live Map** — geo-tagged markers colored by source platform
+- 📡 **Blended Feed** — ranked by importance, risk level, and regional weighting
+- 🧠 **Sentiment Analysis** — VADER-based scoring (`positive`, `neutral`, `negative`)
+- 🏷️ **Risk Tagging** — automatic classification for `security` and `pandemic` topics
+- 🔎 **Filters** — by platform, country/state/city, and topic
+- 🐦 **X/Twitter UX State** — graceful "Coming Soon" handling for unstable RSS availability
 
-## Architecture
+---
 
-```text
-internet-mood-map-v2/
-├── backend/                 FastAPI ingestion, enrichment, scoring, blending
-├── frontend/                Next.js UI (App Router), map and live feed
-└── README.md                Root docs
-```
+## Data Sources
+
+| Source | Method | Reliability |
+|---|---|---|
+| Reddit | Public JSON + RSS fallback | May return 403 on some hosts |
+| HackerNews | Firebase REST API | Stable — primary fallback |
+| Google News | Public RSS (India-first + global) | Resilient hosted fallback |
+| X / Twitter | Public RSS via Nitter instances | Optional / intermittent |
+
+---
 
 ## Tech Stack
 
-- Frontend: Next.js 14, TypeScript, Tailwind, Leaflet
-- Backend: FastAPI, HTTPX, VADER Sentiment
-- Map tiles: OpenStreetMap
-- Hosting: Vercel (frontend), Render (backend)
+| Layer | Technologies |
+|---|---|
+| Frontend | Next.js 14, TypeScript, Tailwind CSS, Leaflet |
+| Backend | FastAPI, HTTPX, VADER Sentiment |
+| Map Tiles | OpenStreetMap |
+| Hosting | Vercel (frontend), Render (backend) |
+
+---
+
+## Project Structure
+
+```
+redline-signal/
+├── backend/      # FastAPI — ingestion, enrichment, scoring, blending
+├── frontend/     # Next.js — App Router, map UI, live feed
+└── README.md
+```
+
+---
 
 ## Local Development
 
-### 1) Backend
+### Prerequisites
+
+- Python 3.9+
+- Node.js 18+
+
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate       # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Health check:
-`http://localhost:8000/health`
+Health check: `http://localhost:8000/health`
 
-### 2) Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -76,94 +94,132 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-Run:
-
 ```bash
 npm run dev
 ```
 
-Open:
-`http://localhost:3000`
+Open: `http://localhost:3000`
+
+---
 
 ## Environment Variables
 
-| Scope | Variable | Required | Description |
-|---|---|---|---|
-| Backend | `FRONTEND_URL` | Yes (deploy) | Allowed CORS origin for frontend |
-| Backend | `NITTER_INSTANCE` | No | Single Nitter instance fallback |
-| Backend | `NITTER_INSTANCES` | No | Comma-separated Nitter instances |
-| Frontend | `NEXT_PUBLIC_API_URL` | Yes | Backend base URL |
-| Frontend | `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site URL for metadata |
+### Backend
 
-## API Endpoints
-
-| Method | Endpoint | Purpose |
+| Variable | Required | Description |
 |---|---|---|
-| `GET` | `/` | API metadata + sources |
+| `FRONTEND_URL` | Yes (deploy) | Allowed CORS origin for the frontend |
+| `NITTER_INSTANCE` | No | Single Nitter instance URL |
+| `NITTER_INSTANCES` | No | Comma-separated list of Nitter instances |
+
+### Frontend
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Yes | Backend base URL |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site URL for metadata |
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | API metadata and active sources |
 | `GET` | `/health` | Health status |
-| `GET` | `/api/mood` | Blended live posts (sentiment + geo + tags) |
-| `GET` | `/api/mood/stats` | Aggregate sentiment stats |
-| `GET` | `/api/debug/sources` | Source diagnostics (raw/blended counts + fetch stats) |
+| `GET` | `/api/mood` | Blended live posts with sentiment, geo, and tags |
+| `GET` | `/api/mood/stats` | Aggregate sentiment statistics |
+| `GET` | `/api/debug/sources` | Source diagnostics — raw and blended counts |
 
-## Deployment Guide
+---
 
-### Backend (Render)
+## Deployment
 
-- Service type: Web Service
-- Root directory: `backend`
-- Build command: `pip install -r requirements.txt`
-- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Environment variables:
-  - `FRONTEND_URL=https://<your-frontend-domain>`
-  - Optional `NITTER_INSTANCES=https://nitter.poast.org,https://nitter.privacydev.net,https://nitter.1d4.us`
+### Backend — Render
 
-### Frontend (Vercel)
+| Setting | Value |
+|---|---|
+| Service Type | Web Service |
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 
-- Root directory: `frontend`
-- Environment variables:
-  - `NEXT_PUBLIC_API_URL=https://<your-render-backend>.onrender.com`
-  - `NEXT_PUBLIC_SITE_URL=https://<your-vercel-domain>`
+**Environment variables:**
 
-## Production Verification Checklist
+```
+FRONTEND_URL=https://<your-frontend-domain>
+NITTER_INSTANCES=https://nitter.poast.org,https://nitter.privacydev.net,https://nitter.1d4.us
+```
 
-1. Open backend `/api/debug/sources` and verify non-zero source counts.
-2. Confirm CORS works (`FRONTEND_URL` matches deployed frontend URL).
-3. Verify frontend platform filters return expected source segments.
-4. Hard refresh after metadata/icon changes (`Cmd+Shift+R`) to clear favicon cache.
+### Frontend — Vercel
 
-## Notes on Icons and Social Thumbnail
+| Setting | Value |
+|---|---|
+| Root Directory | `frontend` |
 
-- Desktop browsers cache favicons aggressively.
-- Metadata/icon updates may require redeploy + hard refresh.
-- Social previews (OG/Twitter) may keep cached cards; use platform card validators to force refresh.
+**Environment variables:**
 
-## Git Ignore Essentials
+```
+NEXT_PUBLIC_API_URL=https://<your-render-backend>.onrender.com
+NEXT_PUBLIC_SITE_URL=https://<your-vercel-domain>
+```
 
-Make sure these are ignored before pushing:
+---
 
-- Python: `.venv/`, `venv/`, `__pycache__/`, `*.pyc`, `.env`
-- Node: `node_modules/`, `.next/`, `.env.local`
-- OS/editor: `.DS_Store`, `.vscode/` (optional)
+## Post-Deployment Checklist
 
-## Suggested GitHub Metadata
+- [ ] `/api/debug/sources` returns non-zero source counts
+- [ ] CORS passes — `FRONTEND_URL` matches the deployed frontend domain exactly
+- [ ] Platform filters return the expected source segments
+- [ ] Hard refresh (`Cmd+Shift+R`) after favicon/metadata changes to clear browser cache
 
-**Repository name**
-`redline-signal`
+> **Note:** Browsers and social platforms cache favicons and OG cards aggressively. Use platform card validators (e.g., Twitter Card Validator, Facebook Debugger) to force a refresh after metadata updates.
 
-**Description**
-`Real-time sentiment and risk intelligence map with India-priority blending across Reddit, HackerNews, Google News RSS, and optional X/Twitter RSS.`
+---
 
-**Topics**
-`fastapi`, `nextjs`, `typescript`, `sentiment-analysis`, `leaflet`, `openstreetmap`, `osint`, `dashboard`, `reddit`, `hackernews`, `google-news`, `rss`, `india`
+## .gitignore Essentials
+
+Ensure these are excluded before pushing:
+
+```gitignore
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Node
+node_modules/
+.next/
+.env.local
+
+# OS / Editor
+.DS_Store
+.vscode/
+```
+
+---
+
+## GitHub Metadata
+
+**Repository name:** `redline-signal`
+
+**Description:** `Real-time sentiment and risk intelligence map with India-priority blending across Reddit, HackerNews, Google News RSS, and optional X/Twitter RSS.`
+
+**Topics:** `fastapi` `nextjs` `typescript` `sentiment-analysis` `leaflet` `openstreetmap` `osint` `dashboard` `reddit` `hackernews` `google-news` `rss` `india`
+
+---
 
 ## License
 
-This repository is **not open source**.
+**All Rights Reserved.**
 
-- License: **All Rights Reserved** (see [`LICENSE`](LICENSE))
-- Permission model: View-only
-- Not allowed without written permission:
-  - Copying code or core logic
-  - Modifying or creating derivative works
-  - Redistributing any portion of this project
-  - Commercial or production reuse
+This repository is source-available for viewing purposes only. The following are **not permitted** without explicit written permission from the author:
+
+- Copying or reusing code or core logic
+- Modifying or creating derivative works
+- Redistributing any portion of this project
+- Commercial or production use
+
+See [`LICENSE`](LICENSE) for full terms.
