@@ -47,6 +47,12 @@ analyzer = SentimentIntensityAnalyzer()
 # ─── Simple in-memory cache — avoids hammering public APIs ───────────────────
 _cache: Dict[str, Any] = {"data": [], "timestamp": 0.0}
 CACHE_TTL_SECONDS = 300  # 5 minutes
+_diag: Dict[str, Any] = {
+    "last_build_at": 0.0,
+    "source_counts_raw": {},
+    "source_counts_blended": {},
+    "twitter": {},
+}
 
 
 # ─── Geo table ────────────────────────────────────────────────────────────────
@@ -429,6 +435,10 @@ async def fetch_twitter_public(
 
     results: List[Dict[str, Any]] = []
     seen_links = set()
+    attempts = 0
+    success_http = 0
+    parse_success = 0
+    instance_hits: Dict[str, int] = {}
 
     def _extract_items(root: ET.Element) -> List[tuple[str, str]]:
         extracted: List[tuple[str, str]] = []
@@ -457,6 +467,7 @@ async def fetch_twitter_public(
         feed_urls = [f"{instance}/search/rss?f=tweets&q={quote_plus(query)}" for query in queries]
         feed_urls.extend([f"{instance}/{handle}/rss" for handle in handles])
         for url in feed_urls:
+            attempts += 1
             try:
                 resp = await client.get(
                     url,
@@ -470,11 +481,13 @@ async def fetch_twitter_public(
                 )
                 if resp.status_code != 200:
                     continue
+                success_http += 1
 
                 root = ET.fromstring(resp.text)
                 items = _extract_items(root)[:limit_per_query]
                 if not items:
                     continue
+                parse_success += 1
 
                 for title, link in items:
                     if not title or not link or link in seen_links:
@@ -514,6 +527,24 @@ async def fetch_twitter_public(
                     })
             except Exception:
                 continue
+
+        instance_hits[instance] = len([r for r in results if r.get("source") == "twitter"])
+
+    _diag["twitter"] = {
+        "attempts": attempts,
+        "http_ok": success_http,
+        "parse_ok": parse_success,
+        "items": len(results),
+        "instances": instances,
+        "instance_hits": instance_hits,
+    }
+    if len(results) == 0:
+        print(
+            "[WARN] Twitter feed returned 0 items. "
+            f"attempts={attempts}, http_ok={success_http}, parse_ok={parse_success}"
+        )
+    else:
+        print(f"[INFO] Twitter feed items fetched: {len(results)}")
 
     return results
 
@@ -603,11 +634,20 @@ async def build_data() -> List[Dict[str, Any]]:
         batches = await asyncio.gather(*tasks)
 
     posts = [p for batch in batches for p in batch]
+    raw_counts: Dict[str, int] = {}
+    for p in posts:
+        src = str(p.get("source", "unknown"))
+        raw_counts[src] = raw_counts.get(src, 0) + 1
+
     blended = blend_priority_feed(posts, max_total=140)
     counts: Dict[str, int] = {}
     for p in blended:
         src = str(p.get("source", "unknown"))
         counts[src] = counts.get(src, 0) + 1
+    _diag["last_build_at"] = time.time()
+    _diag["source_counts_raw"] = raw_counts
+    _diag["source_counts_blended"] = counts
+    print(f"[INFO] Source counts in raw feed: {raw_counts}")
     print(f"[INFO] Source counts in blended feed: {counts}")
     return blended
 
@@ -620,13 +660,23 @@ def root():
         "status":  "ok",
         "version": "2.0.0",
         "message": "Internet Mood Map API — no credentials required",
-        "sources": ["reddit-public-json", "hackernews-firebase"],
+        "sources": ["reddit-public-json", "hackernews-firebase", "twitter-rss-optional"],
     }
 
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/api/debug/sources")
+def debug_sources() -> Dict[str, Any]:
+    cache_age = time.time() - _cache["timestamp"] if _cache["timestamp"] else None
+    return {
+        "cache_age_seconds": round(cache_age, 2) if cache_age is not None else None,
+        "cache_ttl_seconds": CACHE_TTL_SECONDS,
+        "diagnostics": _diag,
+    }
 
 
 @app.get("/api/mood")
