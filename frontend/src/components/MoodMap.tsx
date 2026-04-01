@@ -16,6 +16,7 @@ function sourceDotColor(source?: string): { fill: string; border: string } {
   if (s === "reddit") return { fill: "#ff7a00", border: "#b65600" };
   if (s === "twitter") return { fill: "#1d9bf0", border: "#136aa8" };
   if (s === "hackernews") return { fill: "#ff6600", border: "#b54800" };
+  if (s === "googlenews") return { fill: "#34a853", border: "#1e6f3a" };
   return { fill: "#f5f5f5", border: "#aaaaaa" };
 }
 

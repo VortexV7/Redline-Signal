@@ -35,6 +35,7 @@ function sourceBarColor(source?: string): string {
   if (s === "reddit") return "#ff7a00";
   if (s === "twitter") return "#1d9bf0";
   if (s === "hackernews") return "#ff6600";
+  if (s === "googlenews") return "#34a853";
   return "#333";
 }
 
@@ -43,7 +44,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
   const [countryFilter, setCountryFilter] = useState("All");
   const [stateFilter, setStateFilter] = useState("All");
   const [cityFilter, setCityFilter] = useState("All");
-  const [platformFilter, setPlatformFilter] = useState<"all" | "reddit" | "twitter" | "hackernews">("all");
+  const [platformFilter, setPlatformFilter] = useState<"all" | "reddit" | "twitter" | "hackernews" | "googlenews">("all");
   const [topicFilter, setTopicFilter] = useState<"all" | "general" | "security" | "pandemic">("all");
   const twitterComingSoon = platformFilter === "twitter";
 
@@ -84,7 +85,8 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
         platformFilter === "all" ||
         (platformFilter === "reddit" && source === "reddit") ||
         (platformFilter === "twitter" && source === "twitter") ||
-        (platformFilter === "hackernews" && source === "hackernews");
+        (platformFilter === "hackernews" && source === "hackernews") ||
+        (platformFilter === "googlenews" && source === "googlenews");
 
       const locationMatch =
         (countryFilter === "All" || pCountry === countryFilter) &&
@@ -219,7 +221,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
             </span>
             <select
               value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value as "all" | "reddit" | "twitter" | "hackernews")}
+              onChange={(e) => setPlatformFilter(e.target.value as "all" | "reddit" | "twitter" | "hackernews" | "googlenews")}
               className="text-xs px-2 py-1"
               style={{ background: "#111", color: "#888", border: "1px solid #222" }}
             >
@@ -227,6 +229,7 @@ export default function LiveFeed({ posts, loading, onSelect }: LiveFeedProps) {
               <option value="reddit">Reddit</option>
               <option value="twitter">Twitter/X</option>
               <option value="hackernews">HackerNews</option>
+              <option value="googlenews">Google News</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
