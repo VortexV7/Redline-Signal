@@ -61,7 +61,7 @@ export const metadata: Metadata = {
       "Live global sentiment and risk map from Reddit, HackerNews, and public X/Twitter signals.",
     images: [
       {
-        url: "/og-image.svg?v=2",
+        url: "/og-image.svg?v=3",
         width: 1200,
         height: 630,
         alt: "Redline Signal dashboard preview",
@@ -73,15 +73,15 @@ export const metadata: Metadata = {
     title: "Redline Signal",
     description:
       "Live global sentiment and risk map from Reddit, HackerNews, and public X/Twitter signals.",
-    images: ["/og-image.svg?v=2"],
+    images: ["/og-image.svg?v=3"],
   },
   icons: {
     icon: [
-      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
-      { url: "/icon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon.svg?v=3", type: "image/svg+xml", sizes: "any" },
+      { url: "/icon.svg?v=3", type: "image/svg+xml", sizes: "any" },
     ],
-    shortcut: ["/favicon.svg?v=2"],
-    apple: ["/apple-icon.svg?v=2"],
+    shortcut: ["/favicon.svg?v=3"],
+    apple: ["/apple-icon.svg?v=3"],
   },
   robots: {
     index: true,
@@ -93,6 +93,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${robotoMono.variable} ${orbitron.variable} ${barcode.variable} ${gugi.variable}`}>
       <head>
+        <link rel="icon" href="/favicon.svg?v=3" sizes="any" type="image/svg+xml" />
+        <link rel="shortcut icon" href="/favicon.svg?v=3" type="image/svg+xml" />
+        <meta property="og:image" content={`${siteUrl}/og-image.svg?v=3`} />
+        <meta name="twitter:image" content={`${siteUrl}/og-image.svg?v=3`} />
         <link
           rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
