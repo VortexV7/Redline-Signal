@@ -126,7 +126,7 @@ export default function Footer({ total, loading }: FooterProps) {
                     Version
                   </div>
                   <div className="text-sm" style={{ color: "#f0f0f0", marginTop: "4px" }}>
-                    v1.0.0
+                    v1.5.0
                   </div>
                 </div>
                 <div
