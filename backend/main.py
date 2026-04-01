@@ -242,6 +242,78 @@ def twitter_region_hint(text: str) -> bool:
     return any(term in lowered for term in india_terms)
 
 
+async def fetch_reddit_rss(
+    client: httpx.AsyncClient,
+    subreddit: str,
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    """
+    Fallback for hosted environments where Reddit JSON may be blocked/rate-limited.
+    """
+    url = f"https://www.reddit.com/r/{subreddit}/hot/.rss?limit={limit}"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (compatible; RedlineSignal/2.0; "
+            "public-rss-fallback)"
+        ),
+        "Accept": "application/rss+xml, application/atom+xml, application/xml",
+    }
+
+    try:
+        resp = await client.get(url, headers=headers, timeout=12, follow_redirects=True)
+        if resp.status_code != 200:
+            print(f"[WARN] Reddit RSS r/{subreddit} returned HTTP {resp.status_code}")
+            return []
+
+        root = ET.fromstring(resp.text)
+        entries = root.findall(".//{*}entry")[:limit]
+        results: List[Dict[str, Any]] = []
+
+        for entry in entries:
+            title = (entry.findtext("{*}title") or "").strip()
+            link_node = entry.find("{*}link")
+            link = ""
+            if link_node is not None:
+                link = (link_node.attrib.get("href") or "").strip()
+            post_id = (entry.findtext("{*}id") or str(random.randint(100000, 999999))).strip()
+
+            if not title or not link:
+                continue
+
+            sa = analyse(title)
+            loc = get_location(subreddit)
+            is_india = (subreddit.lower() in INDIA_SUBREDDITS) or (loc["country"] == "India")
+            security = is_security_story(title)
+            pandemic = is_pandemic_story(title)
+
+            results.append({
+                "id":        f"rss-{hashlib.sha1(post_id.encode('utf-8')).hexdigest()[:12]}",
+                "text":      title[:200],
+                "subreddit": subreddit,
+                "source":    "reddit",
+                "sentiment": sa["sentiment"],
+                "score":     sa["score"],
+                "upvotes":   0,
+                "lat":       loc["lat"],
+                "lng":       loc["lng"],
+                "country":   loc["country"],
+                "state":     loc["state"],
+                "city":      loc["city"],
+                "region":    "india" if is_india else "global",
+                "security":  security,
+                "pandemic":  pandemic,
+                "priority":  importance_score(title, 0, is_india),
+                "url":       link,
+            })
+
+        if results:
+            print(f"[INFO] Reddit RSS fallback used for r/{subreddit}: {len(results)} items")
+        return results
+    except Exception as exc:
+        print(f"[WARN] Reddit RSS r/{subreddit} failed: {exc}")
+        return []
+
+
 # ─── Reddit public JSON — NO credentials needed ───────────────────────────────
 async def fetch_reddit(
     client: httpx.AsyncClient,
@@ -266,11 +338,11 @@ async def fetch_reddit(
         resp = await client.get(url, headers=headers, timeout=12)
 
         if resp.status_code == 429:
-            print(f"[WARN] Reddit rate-limited r/{subreddit} — skipping")
-            return []
+            print(f"[WARN] Reddit JSON rate-limited r/{subreddit} — trying RSS fallback")
+            return await fetch_reddit_rss(client, subreddit, limit)
         if resp.status_code != 200:
-            print(f"[WARN] r/{subreddit} returned HTTP {resp.status_code}")
-            return []
+            print(f"[WARN] Reddit JSON r/{subreddit} returned HTTP {resp.status_code} — trying RSS fallback")
+            return await fetch_reddit_rss(client, subreddit, limit)
 
         children = resp.json().get("data", {}).get("children", [])
         results: List[Dict[str, Any]] = []
@@ -313,11 +385,11 @@ async def fetch_reddit(
         return results
 
     except httpx.TimeoutException:
-        print(f"[WARN] Timeout fetching r/{subreddit}")
-        return []
+        print(f"[WARN] Timeout fetching Reddit JSON r/{subreddit} — trying RSS fallback")
+        return await fetch_reddit_rss(client, subreddit, limit)
     except Exception as exc:
-        print(f"[WARN] Reddit r/{subreddit} failed: {exc}")
-        return []
+        print(f"[WARN] Reddit JSON r/{subreddit} failed: {exc} — trying RSS fallback")
+        return await fetch_reddit_rss(client, subreddit, limit)
 
 
 # ─── HackerNews Firebase API — always free, always open ──────────────────────
