@@ -325,26 +325,47 @@ async def fetch_reddit(
     No account, no OAuth, no API key — just a normal HTTP GET.
     We use a descriptive User-Agent as good etiquette.
     """
-    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}"
+    urls = [
+        f"https://api.reddit.com/r/{subreddit}/hot?limit={limit}",
+        f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}&raw_json=1",
+        f"https://www.reddit.com/r/{subreddit}/new.json?limit={limit}&raw_json=1",
+    ]
     headers = {
         "User-Agent": (
-            "Mozilla/5.0 (compatible; InternetMoodMap/2.0; "
-            "educational project)"
+            "Mozilla/5.0 (compatible; RedlineSignal/2.0; "
+            "contact: github.com/VortexV7/Redline-Signal)"
         ),
         "Accept": "application/json",
     }
 
     try:
-        resp = await client.get(url, headers=headers, timeout=12)
+        children: List[Dict[str, Any]] = []
+        last_status = None
 
-        if resp.status_code == 429:
-            print(f"[WARN] Reddit JSON rate-limited r/{subreddit} — trying RSS fallback")
-            return await fetch_reddit_rss(client, subreddit, limit)
-        if resp.status_code != 200:
-            print(f"[WARN] Reddit JSON r/{subreddit} returned HTTP {resp.status_code} — trying RSS fallback")
+        for url in urls:
+            resp = await client.get(url, headers=headers, timeout=12, follow_redirects=True)
+            last_status = resp.status_code
+
+            if resp.status_code == 429:
+                print(f"[WARN] Reddit JSON rate-limited r/{subreddit} on {url}")
+                continue
+            if resp.status_code != 200:
+                print(f"[WARN] Reddit JSON r/{subreddit} returned HTTP {resp.status_code} on {url}")
+                continue
+
+            payload = resp.json()
+            maybe_children = payload.get("data", {}).get("children", [])
+            if maybe_children:
+                children = maybe_children
+                break
+
+        if not children:
+            print(
+                f"[WARN] Reddit JSON exhausted for r/{subreddit} "
+                f"(last_status={last_status}) — trying RSS fallback"
+            )
             return await fetch_reddit_rss(client, subreddit, limit)
 
-        children = resp.json().get("data", {}).get("children", [])
         results: List[Dict[str, Any]] = []
 
         for child in children:
