@@ -651,15 +651,26 @@ async def fetch_google_news_rss(
     Public Google News RSS fallback.
     No credentials required. Useful when Reddit/X are blocked on hosted environments.
     """
-    searches = [
-        ("india breaking news", "india"),
-        ("india security alert", "india"),
-        ("india pandemic update", "india"),
-        ("world breaking news", "global"),
-        ("global security alert", "global"),
-        ("global pandemic update", "global"),
-        ("pakistan security news", "global"),
-        ("afghanistan security news", "global"),
+    india_urls = [
+        "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
+        "https://news.google.com/rss/headlines/section/geo/India?hl=en-IN&gl=IN&ceid=IN:en",
+    ]
+    india_searches = [
+        "india breaking news",
+        "india latest news",
+        "india security alert",
+        "india terrorism news",
+        "india pandemic update",
+        "delhi news",
+        "mumbai news",
+        "kashmir security news",
+        "pakistan india border news",
+        "afghanistan security update",
+    ]
+    global_searches = [
+        "world breaking news",
+        "global security alert",
+        "global pandemic update",
     ]
 
     results: List[Dict[str, Any]] = []
@@ -668,9 +679,52 @@ async def fetch_google_news_rss(
     success_http = 0
     parse_success = 0
 
-    for query, region_hint in searches:
+    feed_plan: List[Dict[str, str]] = []
+    feed_plan.extend([{"url": u, "region_hint": "india", "query": "__top__"} for u in india_urls])
+    feed_plan.extend(
+        [
+            {
+                "url": f"https://news.google.com/rss/search?q={quote_plus(q)}&hl=en-IN&gl=IN&ceid=IN:en",
+                "region_hint": "india",
+                "query": q,
+            }
+            for q in india_searches
+        ]
+    )
+    feed_plan.extend(
+        [
+            {
+                "url": f"https://news.google.com/rss/search?q={quote_plus(q)}&hl=en-US&gl=US&ceid=US:en",
+                "region_hint": "global",
+                "query": q,
+            }
+            for q in global_searches
+        ]
+    )
+
+    def _extract_items(root: ET.Element) -> List[tuple[str, str]]:
+        extracted: List[tuple[str, str]] = []
+        for item in root.findall(".//item"):
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            if title and link:
+                extracted.append((title, link))
+        if extracted:
+            return extracted
+        for entry in root.findall(".//{*}entry"):
+            title = (entry.findtext("{*}title") or "").strip()
+            link_node = entry.find("{*}link")
+            link = ""
+            if link_node is not None:
+                link = (link_node.attrib.get("href") or "").strip()
+            if title and link:
+                extracted.append((title, link))
+        return extracted
+
+    for plan in feed_plan:
         attempts += 1
-        url = f"https://news.google.com/rss/search?q={quote_plus(query)}&hl=en-IN&gl=IN&ceid=IN:en"
+        url = plan["url"]
+        region_hint = plan["region_hint"]
         try:
             resp = await client.get(
                 url,
@@ -685,11 +739,12 @@ async def fetch_google_news_rss(
                 follow_redirects=True,
             )
             if resp.status_code != 200:
+                print(f"[WARN] Google News RSS returned HTTP {resp.status_code} for {url}")
                 continue
             success_http += 1
 
             root = ET.fromstring(resp.text)
-            items = root.findall("./channel/item")
+            items = _extract_items(root)
             if not items:
                 continue
             parse_success += 1
@@ -738,7 +793,9 @@ async def fetch_google_news_rss(
         "http_ok": success_http,
         "parse_ok": parse_success,
         "items": len(results),
-        "queries": [q for q, _ in searches],
+        "india_queries": india_searches,
+        "global_queries": global_searches,
+        "india_urls": india_urls,
     }
     if len(results) == 0:
         print(
@@ -772,6 +829,7 @@ def blend_priority_feed(posts: List[Dict[str, Any]], max_total: int = 140) -> Li
     india_posts = [p for p in posts if p.get("region") == "india"]
     global_posts = [p for p in posts if p.get("region") != "india"]
     twitter_posts = [p for p in posts if p.get("source") == "twitter"]
+    googlenews_posts = [p for p in posts if p.get("source") == "googlenews"]
 
     india_security = [p for p in india_posts if p.get("security")]
     global_security = [p for p in global_posts if p.get("security")]
@@ -798,11 +856,14 @@ def blend_priority_feed(posts: List[Dict[str, Any]], max_total: int = 140) -> Li
     india_target = int(max_total * 0.65)
     global_target = max_total - india_target
     twitter_target = max(8, max_total // 14)
+    googlenews_target = max(12, max_total // 8)
     india_security_target = max(16, india_target // 4)
     global_security_target = max(8, global_target // 4)
 
     # Ensure Twitter is visible when available.
     add_posts(twitter_posts, min(twitter_target, len(twitter_posts)))
+    # Ensure Google News fallback is visible when available.
+    add_posts(googlenews_posts, min(googlenews_target, len(googlenews_posts)))
 
     add_posts(india_security, min(india_security_target, len(india_security)))
     add_posts(global_security, min(global_security_target, len(global_security)))
