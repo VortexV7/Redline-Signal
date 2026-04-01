@@ -128,7 +128,7 @@ Open:
 
 This repository is **not open source**.
 
-- License: **All Rights Reserved** (see [`LICENSE`](/Users/rakeshsharnagate/Desktop/Ved/MoodMAP2/internet-mood-map-v2/LICENSE))
+- License: **All Rights Reserved** (see [`LICENSE`](/Redline-Signal/LICENSE))
 - Permission model: View-only
 - Not allowed without written permission:
   - Copying code or logic
