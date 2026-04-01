@@ -128,7 +128,7 @@ Open:
 
 This repository is **not open source**.
 
-- License: **All Rights Reserved** (see [`LICENSE`](/Redline-Signal/LICENSE))
+- License: **All Rights Reserved** (see [`LICENSE`](/LICENSE))
 - Permission model: View-only
 - Not allowed without written permission:
   - Copying code or logic
