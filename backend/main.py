@@ -749,9 +749,7 @@ async def fetch_google_news_rss(
                 continue
             parse_success += 1
 
-            for item in items[:limit_per_query]:
-                title = (item.findtext("title") or "").strip()
-                link = (item.findtext("link") or "").strip()
+            for title, link in items[:limit_per_query]:
                 if not title or not link or link in seen_links:
                     continue
                 seen_links.add(link)
