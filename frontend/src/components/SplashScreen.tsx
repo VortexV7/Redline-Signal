@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 
 const BOOT_LINES = [
-  "> INITIALIZING INTERNET MOOD MAP v1.0.0",
+  "> INITIALIZING INTERNET MOOD MAP v1.5.0",
   "> CONNECTING TO APIs...",
   "> LOADING VADER SENTIMENT ENGINE...",
   "> FETCHING GLOBAL POST DATA...",
